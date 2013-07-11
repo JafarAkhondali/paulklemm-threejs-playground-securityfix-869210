@@ -1,1 +1,3 @@
 .DS_Store
+three.js/build/
+node_modules/
