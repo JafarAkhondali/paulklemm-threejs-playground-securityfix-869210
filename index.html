@@ -40,6 +40,11 @@
 
 		<script>
 
+		_my_renderer = undefined;
+		_my_mesh = undefined;
+		_geometry = undefined;
+		_scene = undefined;
+
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			var container, stats;
@@ -69,34 +74,52 @@
 				controls.dynamicDampingFactor = 0.3;
 
 				scene = new THREE.Scene();
+				_scene = scene;
 
 				scene.add( camera );
 
 				// light
 
-				var dirLight = new THREE.DirectionalLight( 0xffffff );
+				var dirLight = new THREE.DirectionalLight( 0x000000 );
 				dirLight.position.set( 200, 200, 1000 ).normalize();
 
 				camera.add( dirLight );
 				camera.add( dirLight.target );
 
-				var material = new THREE.MeshLambertMaterial( { color:0xffffff, side: THREE.DoubleSide } );
+				//var material = new THREE.MeshLambertMaterial( { color:0xffffff, side: THREE.DoubleSide } );
+				//var material = new THREE.MeshNormalMaterial( { color:0xffffff, side: THREE.DoubleSide } );
+				var material = new THREE.MeshBasicMaterial();
 
 				var loader = new THREE.VTKLoader();
 				loader.addEventListener( 'load', function ( event ) {
 
 					var geometry = event.content;
+					geometry.computeFaceNormals();
+					_geometry = geometry;
 
 					var mesh = new THREE.Mesh( geometry, material );
-					mesh.position.setY( - 0.09 );
+					mesh.position.y = 0;
+					mesh.position.x = 0;
+					mesh.position.z = 0;
+					_my_mesh = mesh;
+					//mesh.position.setY( - 0.09 );
 					scene.add( mesh );
 
 				} );
 				loader.load( "data/IDs_cluster3.vtk" );
+				//loader.load( "data/vtk/2012820000002.vtk" );
 
+				//myCube = new THREE.Mesh(THREE.CubeGeometry(200, 200, 10), new THREE.MeshNormalMaterial());
+				var cubeMaterial = new THREE.MeshBasicMaterial({transparent: true});
+				cubeMaterial.opacity = 0.1;
+				cube = new THREE.Mesh( new THREE.CubeGeometry( 200, 0.1, 200 ), cubeMaterial );
+				cube.position.y = 0;
+				cube.position.x = 0;
+				cube.position.z = 0;
+				scene.add(cube)
 				// renderer
-
-				renderer = new THREE.WebGLRenderer( { antialias: false } );
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				_my_renderer = renderer;
 				renderer.setClearColor( 0x000000, 1 );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
@@ -136,8 +159,6 @@
 				stats.update();
 
 			}
-
 		</script>
-
 	</body>
 </html>
