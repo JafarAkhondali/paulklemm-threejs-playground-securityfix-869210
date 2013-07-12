@@ -24,6 +24,8 @@
 		<div id='threeRenderer' style='background-color:#000000; height:100%; margin-left:300px;'></div>
 		<div id="info"></div>
 
+		<script src="dat-gui/build/dat.gui.js"></script>
+
 		<script src="http://code.jquery.com/jquery-1.8.3.js"></script>
 		<script src="/socket.io/socket.io.js"></script>
 		<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
@@ -35,10 +37,31 @@
 
 		<script>
 
-		_my_renderer = undefined;
-		_my_mesh = undefined;
-		_geometry = undefined;
-		_scene = undefined;
+		var _my_renderer = undefined;
+		var _my_mesh = undefined;
+		var _geometry = undefined;
+		var _scene = undefined;
+		var cube = undefined;
+		var initialColor = "#e12c96";
+
+		var drawProperties = {
+			linewidth: 3,
+			linecolor: initialColor,
+			opacity: 1,
+			fog: false,
+			cubeOpacity: 0.3,
+			cubeColor: "#000000"
+		}
+
+		$(document).ready(function(){
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			var container, stats;
+			var camera, controls, scene, renderer;
+			var cross;
+
+			init();
+			animate();
+		});
 
 			$(document).ready(function()
 			{
@@ -63,17 +86,6 @@
 				addVtkFile('/data/vtk/' + d);
 			}
 
-			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
-
-			var container, stats;
-
-			var camera, controls, scene, renderer;
-
-			var cross;
-
-			init();
-			animate();
-
 			function addVtkFile(filename) {
 				var loader = new THREE.VTKLoader();
 				loader.addEventListener( 'load', function ( event ) {
@@ -87,30 +99,63 @@
 		        color: 0x6699FF, linewidth: 3
 			    });
 	        var line = new THREE.Line(geometry, material);
+	        line.name = filename;
 	        _scene.add(line);
-
-				} );
+				});
 				//loader.load( "data/IDs_cluster3.vtk" );
 				//loader.load( "data/vtk/2012820000028.vtk" );
 				loader.load(filename);
 			}
 
+			var updateLines = function() {
+
+				cube.material.opacity = drawProperties.cubeOpacity;
+				cube.material.color.setHex(drawProperties.cubeColor);
+				// Parse all scene objects
+				for (i = 0; i < _scene.children.length; i++)
+				{
+					if (_scene.children[i].name != "")
+					{
+						_scene.children[i].material.linewidth = drawProperties.linewidth;
+						_scene.children[i].material.color.setHex(drawProperties.linecolor);
+						_scene.children[i].material.opacity = drawProperties.opacity;
+					}
+				}
+			}
+
+			function addGUI() {
+				var gui = new dat.GUI();
+
+				gui.add(drawProperties, "linewidth").min(0.5).max(10).step(0.5).onChange(function() {
+					updateLines();
+				});
+				gui.addColor(drawProperties, 'linecolor').onChange(function() {
+		    	drawProperties.linecolor = drawProperties.linecolor.replace( '#','0x' );
+		    	updateLines();
+		    });
+		    gui.add(drawProperties, "opacity").min(0).max(1).step(0.1).onChange(function(){
+		    	updateLines();
+		    });
+		    gui.addColor(drawProperties, 'cubeColor').onChange(function() {
+		    	drawProperties.cubeColor = drawProperties.cubeColor.replace( '#','0x' );
+		    	updateLines();
+		    });
+		    gui.add(drawProperties, "cubeOpacity").min(0).max(1).step(0.1).onChange(function(){
+		    	updateLines();
+		    });
+
+		    // change initial color to HEX in order to work if value other than color is changed
+		    drawProperties.linecolor = initialColor.replace( '#','0x' );
+			}
+
 			function init() {
+
+				var params = {
+  			  interaction: 5000
+				};
 
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 1e10 );
 				camera.position.z = 0.3;
-
-				controls = new THREE.TrackballControls( camera );
-
-				controls.rotateSpeed = 5.0;
-				controls.zoomSpeed = 5;
-				controls.panSpeed = 2;
-
-				controls.noZoom = false;
-				controls.noPan = false;
-
-				controls.staticMoving = true;
-				controls.dynamicDampingFactor = 0.3;
 
 				scene = new THREE.Scene();
 				_scene = scene;
@@ -125,6 +170,7 @@
 
 				var cubeMaterial = new THREE.MeshBasicMaterial({transparent: true});
 				cubeMaterial.opacity = 0.3;
+				cubeMaterial.color.setHex("0x000000");
 				cube = new THREE.Mesh( new THREE.CubeGeometry( 200, 0.1, 200 ), cubeMaterial );
 				cube.position.y = 0;
 				cube.position.x = 0;
@@ -145,15 +191,30 @@
 				stats.domElement.style.position = 'absolute';
 				stats.domElement.style.top = '0px';
 				renderDomElement.append(stats.domElement);
+
+				controls = new THREE.TrackballControls(camera, renderer.domElement); // Last element says that to only rotate when cursor is on renderer
+
+				controls.rotateSpeed = 5.0;
+				controls.zoomSpeed = 5;
+				controls.panSpeed = 2;
+
+				controls.noZoom = false;
+				controls.noPan = false;
+
+				controls.staticMoving = true;
+				controls.dynamicDampingFactor = 0.3;
+
 				//container.appendChild( stats.domElement );
 				//
 				window.addEventListener( 'resize', onWindowResize, false );
+
+				addGUI();
 			}
 
 			function onWindowResize() {
-				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.aspect = window.innerWidth - 200 / window.innerHeight;
 				camera.updateProjectionMatrix();
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( window.innerWidth - 200, window.innerHeight );
 				controls.handleResize();
 			}
 
