@@ -6,35 +6,30 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
 			body {
-				font-family: Monospace;
-				background-color: #000;
-				color: #fff;
-				margin: 0px;
-				overflow: hidden;
+				margin: 0;
+			  padding: 0;
+			  height: 100%;
+			  overflow: hidden !important;  
+
+			  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+			  font-size: 14px;
+			  line-height: 20px;
+			  color: #333333;
 			}
-			#info {
-				color: #fff;
-				position: absolute;
-				top: 10px;
-				width: 100%;
-				text-align: center;
-				z-index: 100;
-				display:block;
-			}
-			#info a, .button { color: #f00; font-weight: bold; text-decoration: underline; cursor: pointer }
 		</style>
 	</head>
 
 	<body>
-		<div id="info">
-		</div>
+		<div style="float:left;width:300px;height:100%;overflow:scroll;background-color:#f2f2f2;"><ul id="fileList"></ul></div>
+		<div id='threeRenderer' style='background-color:#000000; height:100%; margin-left:300px;'></div>
+		<div id="info"></div>
 
+		<script src="http://code.jquery.com/jquery-1.8.3.js"></script>
+		<script src="/socket.io/socket.io.js"></script>
+		<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
 		<script src="three.js/build/three.min.js"></script>
-
 		<script src="three.js/examples/js/controls/TrackballControls.js"></script>
-
 		<script src="three.js/examples/js/loaders/VTKLoader.js"></script>
-
 		<script src="three.js/examples/js/Detector.js"></script>
 		<script src="three.js/examples/js/libs/stats.min.js"></script>
 
@@ -44,6 +39,29 @@
 		_my_mesh = undefined;
 		_geometry = undefined;
 		_scene = undefined;
+
+			$(document).ready(function()
+			{
+				var socket = io.connect('http://localhost:8080');
+				// Tell the server we want to have a list of all objects
+				socket.emit('getAvailableFiles');
+
+				socket.on('sendAvailableFiles', function (data) {
+				  d3.select("ul#fileList").selectAll("li")
+			    		.data(data)
+			  		.enter().append("li")
+			    		.text(function(d) { return d; })
+			    		.on("click", click);
+				});
+
+				socket.on('receiveVTKFile', function (data) {
+					console.log(data);
+				});
+			});
+
+			function click(d) {
+				addVtkFile('/data/vtk/' + d);
+			}
 
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
@@ -56,14 +74,31 @@
 			init();
 			animate();
 
+			function addVtkFile(filename) {
+				var loader = new THREE.VTKLoader();
+				loader.addEventListener( 'load', function ( event ) {
+
+					var geometry = event.content;
+					geometry.computeFaceNormals();
+					geometry.computeBoundingSphere();
+					_geometry = geometry;
+					
+					var material = new THREE.LineBasicMaterial({
+		        color: 0x6699FF, linewidth: 3
+			    });
+	        var line = new THREE.Line(geometry, material);
+	        _scene.add(line);
+
+				} );
+				//loader.load( "data/IDs_cluster3.vtk" );
+				//loader.load( "data/vtk/2012820000028.vtk" );
+				loader.load(filename);
+			}
+
 			function init() {
 
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 1e10 );
 				camera.position.z = 0.3;
-				//camera.position.y = 200;
-				//camera.position.x = 0;
-				//camera.position.set(0, 200, 0);
-			  //camera.lookAt(new THREE.Vector3(0, 0, 0));
 
 				controls = new THREE.TrackballControls( camera );
 
@@ -79,49 +114,15 @@
 
 				scene = new THREE.Scene();
 				_scene = scene;
-				//camera.position.set( 0, 200, 15 );
-				//camera.lookAt( scene.position );
 				scene.add( camera );
 
 				// light
-
 				var dirLight = new THREE.DirectionalLight( 0x000000 );
 				dirLight.position.set( 200, 200, 1000 ).normalize();
 
 				camera.add( dirLight );
 				camera.add( dirLight.target );
 
-				//var material = new THREE.MeshLambertMaterial( { color:0xffffff, side: THREE.DoubleSide } );
-				//var material = new THREE.MeshNormalMaterial( { color:0xffffff, side: THREE.DoubleSide } );
-				var material = new THREE.MeshBasicMaterial();
-
-				var loader = new THREE.VTKLoader();
-				loader.addEventListener( 'load', function ( event ) {
-
-					var geometry = event.content;
-					geometry.computeFaceNormals();
-					geometry.computeBoundingSphere();
-					_geometry = geometry;
-
-					var mesh = new THREE.Mesh( geometry, material );
-					mesh.position.y = 0;
-					mesh.position.x = 0;
-					mesh.position.z = 0;
-					_my_mesh = mesh;
-					
-					var material = new THREE.LineBasicMaterial({
-		        color: 0x6699FF, linewidth: 3, fog:true
-			    });
-	        var line = new THREE.Line(geometry, material);
-	        scene.add(line);
-					//scene.add( mesh );
-
-				} );
-				//loader.load( "data/IDs_cluster3.vtk" );
-				loader.load( "data/vtk/2012820000002.vtk" );
-
-
-				//myCube = new THREE.Mesh(THREE.CubeGeometry(200, 200, 10), new THREE.MeshNormalMaterial());
 				var cubeMaterial = new THREE.MeshBasicMaterial({transparent: true});
 				cubeMaterial.opacity = 0.3;
 				cube = new THREE.Mesh( new THREE.CubeGeometry( 200, 0.1, 200 ), cubeMaterial );
@@ -133,43 +134,34 @@
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				_my_renderer = renderer;
 				renderer.setClearColor( 0x000000, 1 );
-				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setSize( window.innerWidth - 200, window.innerHeight );
 
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
-				container.appendChild( renderer.domElement );
+				//container = document.createElement( 'div' );
+				//document.body.appendChild( container );
+				var renderDomElement = $("div#threeRenderer").append(renderer.domElement);
+				//container.appendChild( renderer.domElement );
 
 				stats = new Stats();
 				stats.domElement.style.position = 'absolute';
 				stats.domElement.style.top = '0px';
-				container.appendChild( stats.domElement );
-
+				renderDomElement.append(stats.domElement);
+				//container.appendChild( stats.domElement );
 				//
-
 				window.addEventListener( 'resize', onWindowResize, false );
-
 			}
 
 			function onWindowResize() {
-
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
-
 				renderer.setSize( window.innerWidth, window.innerHeight );
-
 				controls.handleResize();
-
 			}
 
 			function animate() {
-
 				requestAnimationFrame( animate );
-
 				controls.update();
 				renderer.render( scene, camera );
-
 				stats.update();
-
 			}
 		</script>
 	</body>
