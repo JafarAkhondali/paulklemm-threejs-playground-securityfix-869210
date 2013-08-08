@@ -89,7 +89,7 @@
 			function addVtkFile(filename) {
 				var loader = new THREE.VTKLoader();
 				loader.addEventListener( 'load', function ( event ) {
-
+                    //console.log(event.content);
 					var geometry = event.content;
 					geometry.computeFaceNormals();
 					geometry.computeBoundingSphere();
