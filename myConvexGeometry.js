@@ -4,144 +4,16 @@ myConvexGeometry = function( spines ) {
 
     THREE.Geometry.call( this );
     
-    //var faces = [ [ 0, 1, 2 ], [ 0, 2, 1 ] ];
     var faces = undefined;
 	var levels = undefined;
 	var vertices = undefined;
     
+	// split spines horizontally into levels
     for ( var i = 0; i < spines.length; i++ ) {
         for ( var j = 0; j < spines[0].vertices.length; i++) {
             levels[j][i] = spines[i].vertices[j];
         }
     }
-    
-    
-    
-	function addPoint( vertexId ) {
-    
-        var vertex = vertices[ vertexId ].clone();
-        
-        var mag = vertex.length();
-        vertex.x += mag * randomOffset();
-        vertex.y += mag * randomOffset();
-        vertex.z += mag * randomOffset();
-        
-        var hole = [];
-    
-        for ( var f = 0; f < faces.length; ) {
-    
-            var face = faces[ f ];
-    
-            // for each face, if the vertex can see it,
-            // then we try to add the face's edges into the hole.
-            if ( visible( face, vertex ) ) {
-    
-                for ( var e = 0; e < 3; e++ ) {
-    
-                    var edge = [ face[ e ], face[ ( e + 1 ) % 3 ] ];
-                    var boundary = true;
-    
-                    // remove duplicated edges.
-                    for ( var h = 0; h < hole.length; h++ ) {
-    
-                        if ( equalEdge( hole[ h ], edge ) ) {
-    
-                            hole[ h ] = hole[ hole.length - 1 ];
-                            hole.pop();
-                            boundary = false;
-                            break;
-    
-                        }
-    
-                    }
-    
-                    if ( boundary ) {
-    
-                        hole.push( edge );
-    
-                    }
-    
-                }
-    
-                // remove faces[ f ]
-                faces[ f ] = faces[ faces.length - 1 ];
-                faces.pop();
-    
-            } else { // not visible
-    
-                f++;
-    
-            }
-        }
-    
-        // construct the new faces formed by the edges of the hole and the vertex
-        for ( var h = 0; h < hole.length; h++ ) {
-        
-            faces.push( [
-        hole[ h ][ 0 ],
-                hole[ h ][ 1 ],
-                vertexId
-            ] );
-    
-        }
-        }
-		
-        
-        /**
-        * Whether the face is visible from the vertex
-        */
-    function visible( face, vertex ) {
-                
-		var va = vertices[ face[ 0 ] ];
-		var vb = vertices[ face[ 1 ] ];
-		var vc = vertices[ face[ 2 ] ];
-
-		var n = normal( va, vb, vc );
-
-		// distance from face to origin
-		var dist = n.dot( va );
-
-		return n.dot( vertex ) >= dist;
-
-	}
-    
-	/**
-	* Face normal
-	*/
-	function normal( va, vb, vc ) {
-		
-		var cb = new THREE.Vector3();
-		var ab = new THREE.Vector3();
-
-		cb.subVectors( vc, vb );
-		ab.subVectors( va, vb );
-		cb.cross( ab );
-
-		cb.normalize();
-
-		return cb;
-
-	}
-    
-	/**
-	* Detect whether two edges are equal.
-	* Note that when constructing the convex hull, two same edges can only
-	* be of the negative direction.
-	*/
-	function equalEdge( ea, eb ) {
-		
-		return ea[ 0 ] === eb[ 1 ] && ea[ 1 ] === eb[ 0 ];
-		
-	}
-        
-	/**
-	* Create a random offset between -1e-6 and 1e-6.
-	*/
-	function randomOffset() {
-		
-		return ( Math.random() - 0.5 ) * 2 * 1e-6;
-
-	}
     
     function isLeft(p1, p2, p3) {
 		return ((p1.x-p0.x)*(p2.y-p0.y) - (p2.x-p0.x)*(p1.y-p0.y));
@@ -208,43 +80,127 @@ myConvexGeometry = function( spines ) {
 	}
 	
 	
-	// per level compute convex hull
+	function arraysIdentical(arr1, arr2) {
+		var i = arr1.length;
+		if (i !== arr2.length) {
+			return false;
+		}
+		while (i--) {
+			if (arr1[i] !== arr2[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
 	
+	function indexOf(arr, val, comparer) {
+		for (var i = 0, len = arr.length; i < len; ++i) {
+			if ( i in arr && comparer(arr[i], val) ) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	// returns the indices of the two points in listOfCandidates closest to target
+	function findTwoClosestVertices(target, listOfCandidates) {
+		var closest = 0;
+		var closestDistance = distance(distance(target, listOfCandidates[0]));
+		var secondClosest = 0;
+		var secondClosestDistance = distance(distance(target, listOfCandidates[0]));
+		for (var i = 1; i < listOfCandidates.length; i++) {
+			var d = distance(target, listOfCandidates[i]);
+			if ( d < closestDistance) {
+				secondClosestDistance = closestDistance;
+				secondClosest = closest;
+				closestDistance = d;
+				closest = i;	
+			} else if ( d < secondClosestDistance ) {
+				secondClosestDistance = d;
+				secondClosest = i;
+			}
+		}	
+		return [closest, secondClosest];
+	}
+	
+	function distance(pointA, pointB) {
+		var d = sqrt(
+			pow(pointA.x-pointB.x,2)
+			+ pow(pointA.y-pointB.y,2)
+			+ pow(pointA.z-pointB.z,2)
+			);
+		return d;
+	}
+	// per level compute convex hull	
 	var newLevels = undefined;
 	for (var i = 0, i < levels.length; i++) {
 		newLevels[i] = perLevelConvexHull(levels[i]);
 	}
+	
 	// step through levels and compute faces
 	// lowest level
-	
-	vertices.concat newLevels[0];
-	for (var i=2;i>vertices.length;i++) {
-		faces.push(new THREE.Face3(0,i-1,i));
+	for (var i = 2; i < newLevels[0].length; i++) {
+		faces.push([
+			newLevels[0][0],
+			newLevels[0][i-1],
+			newLevels[0][i]
+			));
 	}
-	for (var i = 
-	// Push vertices into `this.vertices`, skipping those inside the hull
-	var id = 0;
-	var newId = new Array( vertices.length ); // map from old vertex id to new id
+	for (var i = 0; i < newLevels[0].length; i++) {
+		var p = findTwoClosestVertices(newLevels[0][i], newLevels[1]);
+		faces.push([
+			newLevels[0][i],
+			newLevels[1][p[0]],
+			newLevels[1][p[1]]
+			]);
+	}
 	
-	for ( var i = 0; i < faces.length; i++ ) {		
-		var face = faces[ i ];
-		for ( var j = 0; j < 3; j++ ) {
-			if ( newId[ face[ j ] ] === undefined ) {
-				newId[ face[ j ] ] = id++;
-				this.vertices.push( vertices[ face[ j ] ] );
-			}
-			face[ j ] = newId[ face[ j ] ];
+	// middle levels
+	for (var i = 1; i < newLevels.length-1; i++) {
+		for ( var j=0; j < newLevels[i].length; j++) {
+			var p = findTwoClosestVertices(newLevels[i][j], newLevels[i-1]);
+			faces.push([
+				newLevels[i][j],
+				newLevels[i-1]p[0]],
+				newLevels[i-1][p[1]]
+				]);
+			p = findTwoClosestVertices(newLevels[i][j], newLevels[i+1]);
+			faces.push([
+				newLevels[i][j],
+				newLevels[i+1]p[0]],
+				newLevels[i+1][p[1]]
+				]);
 		}
 	}
-    
-	// Convert faces into instances of THREE.Face3
-	for ( var i = 0; i < faces.length; i++ ) {
-		this.faces.push( new THREE.Face3(
-			faces[ i ][ 0 ],
-			faces[ i ][ 1 ],
-			faces[ i ][ 2 ]
-		) );
+	//uppermost level
+	for (var i = 0; i < newLevels[newLevels.length-1].length; i++) {
+		faces.push([
+			newLevels[0][0],
+			newLevels[0][i],
+			newLevels[0][i-1]
+			]);
 	}
+	for (var i = 0; i < newLevels[newLevels.length-1].length; i++) {
+		p=findTwoClosestVertices(newLevels[newLevels.length-1][i],newLevels[newLevels.length-2]);
+		faces.push([
+			newLevels[0][i],
+			newLevels[newLevels.length-2][p[0]],
+			newLevels[newLevels.length-2][p[1]]
+			]);
+	}
+	// push all vertices into same array
+	for (var i = 0; i < newLevels.length; i++) {
+		this.vertices.cat(newLevels[i]);
+	}
+	
+	// translate faces to vertex indices
+	for ( var i = 0, i < faces.length; i++) {
+		this.faces.push(new THREE.Face3(
+			indexOf(this.vertices,faces[i][0],arraysIdentical),
+			indexOf(this.vertices,faces[i][1],arraysIdentical),,
+			indexOf(this.vertices,faces[i][2],arraysIdentical),
+			));
+	}	
     
     // Compute UVs
 	for ( var i = 0; i < this.faces.length; i++ ) {
