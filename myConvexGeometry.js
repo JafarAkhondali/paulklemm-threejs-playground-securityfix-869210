@@ -1,23 +1,31 @@
-/* spines is an array of THREE.geometry objects containing representations of spinal channel centerlines*/
+/* spines is an array of arrays of THREE.Vertex3 objects containing representations of spinal channel centerlines*/
 
-myConvexGeometry = function( spines ) {
+THREE.myConvexGeometry = function( spines ) {
 
     THREE.Geometry.call( this );
     
-    var faces = undefined;
-	var levels = undefined;
-	var vertices = undefined;
+    var numSpines = spines.length;
+    var numVerticesPerSpine = spines[0].length;
+    // initialize levels as 2dim array
+    var levels = new Array(numVerticesPerSpine);
+    for(var i=0; i<numVerticesPerSpine;i++){
+        levels[i]=new Array(numSpines);
+    }
     
+    var faces = new Array();
+	var vertices = new Array();
+
 	// split spines horizontally into levels
-    for ( var i = 0; i < spines.length; i++ ) {
-        for ( var j = 0; j < spines[0].vertices.length; i++) {
-            levels[j][i] = spines[i].vertices[j];
+    for ( var i = 0; i < numSpines; i++ ) {
+        for ( var j = 0; j < numVerticesPerSpine; j++) {
+            levels[j][i] = spines[i][j];
         }
     }
     
-    function isLeft(p1, p2, p3) {
+    function isLeft(p0, p1, p2) {
 		return ((p1.x-p0.x)*(p2.y-p0.y) - (p2.x-p0.x)*(p1.y-p0.y));
 	}
+    
 	/**
 	* XXX: Not sure if this is the correct approach. Need someone to review.
 	*/
@@ -30,7 +38,7 @@ myConvexGeometry = function( spines ) {
     
 	function perLevelConvexHull(level) {
 		//sort vertices in level according to x coordinate 
-		level.sort(function(a,b) {return a.x > b.x};
+		level.sort(function(a,b) {return a.x > b.x});
 		// set z coordinate to level average
 		var sumZ = 0;
 		for (var i = 0; i < level.length; i++) {
@@ -41,7 +49,7 @@ myConvexGeometry = function( spines ) {
 			level[i].z = avgZ;
 		}
 		// compute lower half of convex hull
-		var lowerHull = undefined;
+		var lowerHull = new Array();
 		lowerHull.push(level[0]);
 		lowerHull.push(level[1]);
 		var numVertsInHull = 2;
@@ -58,7 +66,7 @@ myConvexGeometry = function( spines ) {
 			}
 		}
 		// compute upper half of convex hull
-		var upperHull = undefined;
+		var upperHull = new Array();
 		upperHull.push(level[level.length-1]);
 		upperHull.push(level[level.length-2]);
 		numVertsInHull = 2;
@@ -75,27 +83,17 @@ myConvexGeometry = function( spines ) {
 			}
 		}
 		//join halves
-		hull = lowerHull.pop().concat(upperHull.pop());
+        lowerHull.pop();
+        upperHull.pop();
+		hull = lowerHull.concat(upperHull);
 		return hull;
 	}
 	
+
 	
-	function arraysIdentical(arr1, arr2) {
-		var i = arr1.length;
-		if (i !== arr2.length) {
-			return false;
-		}
-		while (i--) {
-			if (arr1[i] !== arr2[i]) {
-				return false;
-			}
-		}
-		return true;
-	}
-	
-	function indexOf(arr, val, comparer) {
-		for (var i = 0, len = arr.length; i < len; ++i) {
-			if ( i in arr && comparer(arr[i], val) ) {
+	function indexOfVertex(arr, v0) {
+		for (var i = 0; i < arr.length; ++i) {
+			if ( i in arr && arr[i].equals(v0)) {
 				return i;
 			}
 		}
@@ -105,9 +103,9 @@ myConvexGeometry = function( spines ) {
 	// returns the indices of the two points in listOfCandidates closest to target
 	function findTwoClosestVertices(target, listOfCandidates) {
 		var closest = 0;
-		var closestDistance = distance(distance(target, listOfCandidates[0]));
+		var closestDistance = distance(target, listOfCandidates[0]);
 		var secondClosest = 0;
-		var secondClosestDistance = distance(distance(target, listOfCandidates[0]));
+		var secondClosestDistance = distance(target, listOfCandidates[0]);
 		for (var i = 1; i < listOfCandidates.length; i++) {
 			var d = distance(target, listOfCandidates[i]);
 			if ( d < closestDistance) {
@@ -123,20 +121,21 @@ myConvexGeometry = function( spines ) {
 		return [closest, secondClosest];
 	}
 	
-	function distance(pointA, pointB) {
-		var d = sqrt(
-			pow(pointA.x-pointB.x,2)
-			+ pow(pointA.y-pointB.y,2)
-			+ pow(pointA.z-pointB.z,2)
+	function distance(p0, p1) {
+		var d = Math.sqrt(
+			Math.pow(p0.x-p1.x,2)
+			+ Math.pow(p0.y-p1.y,2)
+			+ Math.pow(p0.z-p1.z,2)
 			);
 		return d;
 	}
-	// per level compute convex hull	
-	var newLevels = undefined;
-	for (var i = 0, i < levels.length; i++) {
+    
+	// per level compute convex hull
+	var newLevels = new Array();
+	for (var i = 0; i < levels.length; i++) {
 		newLevels[i] = perLevelConvexHull(levels[i]);
 	}
-	
+    
 	// step through levels and compute faces
 	// lowest level
 	for (var i = 2; i < newLevels[0].length; i++) {
@@ -144,7 +143,7 @@ myConvexGeometry = function( spines ) {
 			newLevels[0][0],
 			newLevels[0][i-1],
 			newLevels[0][i]
-			));
+        ]);
 	}
 	for (var i = 0; i < newLevels[0].length; i++) {
 		var p = findTwoClosestVertices(newLevels[0][i], newLevels[1]);
@@ -161,61 +160,75 @@ myConvexGeometry = function( spines ) {
 			var p = findTwoClosestVertices(newLevels[i][j], newLevels[i-1]);
 			faces.push([
 				newLevels[i][j],
-				newLevels[i-1]p[0]],
+				newLevels[i-1][p[0]],
 				newLevels[i-1][p[1]]
 				]);
 			p = findTwoClosestVertices(newLevels[i][j], newLevels[i+1]);
 			faces.push([
 				newLevels[i][j],
-				newLevels[i+1]p[0]],
+				newLevels[i+1][p[0]],
 				newLevels[i+1][p[1]]
 				]);
 		}
 	}
 	//uppermost level
-	for (var i = 0; i < newLevels[newLevels.length-1].length; i++) {
+	for (var i = 2; i < newLevels[newLevels.length-1].length; i++) {
 		faces.push([
-			newLevels[0][0],
-			newLevels[0][i],
-			newLevels[0][i-1]
+			newLevels[newLevels.length-1][0],
+			newLevels[newLevels.length-1][i],
+			newLevels[newLevels.length-1][i-1]
 			]);
 	}
 	for (var i = 0; i < newLevels[newLevels.length-1].length; i++) {
 		p=findTwoClosestVertices(newLevels[newLevels.length-1][i],newLevels[newLevels.length-2]);
 		faces.push([
-			newLevels[0][i],
+			newLevels[newLevels.length-1][i],
 			newLevels[newLevels.length-2][p[0]],
 			newLevels[newLevels.length-2][p[1]]
 			]);
 	}
 	// push all vertices into same array
+    //console.log("line 203"); console.log(newLevels[0]);
 	for (var i = 0; i < newLevels.length; i++) {
-		this.vertices.cat(newLevels[i]);
+        for(var j = 0; j < newLevels[i].length; j++) {
+		  this.vertices.push(newLevels[i][j]);
+        }
 	}
-	
+    //console.log("line 206"); console.log(this.vertices);
+    
 	// translate faces to vertex indices
-	for ( var i = 0, i < faces.length; i++) {
+    //console.log("faces.length = " + faces.length);
+    //console.log(faces);
+	for ( var i = 0; i < faces.length; i++) {
+        //console.log("inside translate faces to vertex indices; i = " + i);
+        //console.log(faces[i][0]);
 		this.faces.push(new THREE.Face3(
-			indexOf(this.vertices,faces[i][0],arraysIdentical),
-			indexOf(this.vertices,faces[i][1],arraysIdentical),,
-			indexOf(this.vertices,faces[i][2],arraysIdentical),
-			));
-	}	
+			indexOfVertex(this.vertices,faces[i][0]),
+			indexOfVertex(this.vertices,faces[i][1]),
+			indexOfVertex(this.vertices,faces[i][2])
+            ));
+	}
+    
+    //console.log("line 214"); console.log(this.faces[0]);
+
     
     // Compute UVs
+    //console.log(this.faces.length);
 	for ( var i = 0; i < this.faces.length; i++ ) {
 		var face = this.faces[ i ];
+        //console.log("inside loop");
+        //console.log(face);
 		this.faceVertexUvs[ 0 ].push( [
 			vertexUv( this.vertices[ face.a ] ),
 			vertexUv( this.vertices[ face.b ] ),
 			vertexUv( this.vertices[ face.c ])
 		] );   
     }
-     
+    console.log("nach  Compute UVs");
     this.computeCentroids();
     this.computeFaceNormals();
     this.computeVertexNormals();
     
 };
 
-THREE.ConvexGeometry.prototype = Object.create( THREE.Geometry.prototype );
+THREE.myConvexGeometry.prototype = Object.create( THREE.Geometry.prototype );

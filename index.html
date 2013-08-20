@@ -34,6 +34,7 @@
 		<script src="three.js/examples/js/loaders/VTKLoader.js"></script>
 		<script src="three.js/examples/js/Detector.js"></script>
 		<script src="three.js/examples/js/libs/stats.min.js"></script>
+        <script src="myConvexGeometry.js"></script>
 
 		<script>
 
@@ -52,6 +53,7 @@
 			cubeOpacity: 0.3,
 			cubeColor: "#000000"
 		}
+        var spineArray = new Array();
 
 		$(document).ready(function(){
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
@@ -98,14 +100,41 @@
 					var material = new THREE.LineBasicMaterial({
 		        color: 0x6699FF, linewidth: 3
 			    });
-	        var line = new THREE.Line(geometry, material);
-	        line.name = filename;
-	        _scene.add(line);
+	           var line = new THREE.Line(geometry, material);
+	           line.name = filename;
+	           _scene.add(line);
+                // prepare vertices for convex hull generation
+                spineArray.push(line.geometry.vertices);
 				});
 				//loader.load( "data/IDs_cluster3.vtk" );
 				//loader.load( "data/vtk/2012820000028.vtk" );
 				loader.load(filename);
+                
 			}
+            
+            function removeLinesFromScene() {
+              for(var i = scene.children.length-1; i > 0; i--) {
+                  if (scene.children[i] instanceof THREE.Line) {
+                      scene.remove(scene.children[i]);
+                   }
+               }
+            }
+            
+            function removeMeshesFromScene() {
+              for(var i = scene.children.length-1; i > 0; i--) {
+                  if (scene.children[i] instanceof THREE.Mesh) {
+                      scene.remove(scene.children[i]);
+                   }
+               }
+            }
+            
+            function addConvexGeometry() {
+                var geometry = new THREE.myConvexGeometry(spineArray);
+                console.log("nach geometry");
+                var material = new THREE.MeshBasicMaterial();
+                var mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+            }
 
 			var updateLines = function() {
 
