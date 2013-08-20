@@ -224,7 +224,7 @@ THREE.myConvexGeometry = function( spines ) {
 			vertexUv( this.vertices[ face.c ])
 		] );   
     }
-    console.log("nach  Compute UVs");
+    //console.log("nach  Compute UVs");
     this.computeCentroids();
     this.computeFaceNormals();
     this.computeVertexNormals();

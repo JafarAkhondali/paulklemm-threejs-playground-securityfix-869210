@@ -130,8 +130,7 @@
             
             function addConvexGeometry() {
                 var geometry = new THREE.myConvexGeometry(spineArray);
-                console.log("nach geometry");
-                var material = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
+                var material = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: false });
                 var mesh = new THREE.Mesh(geometry, material);
                 scene.add(mesh);
             }
@@ -173,6 +172,9 @@
 		    	updateLines();
 		    });
 
+			gui.add(this, 'addConvexGeometry').name('addConvexGeometry');
+			gui.add(this, 'removeLinesFromScene').name('removeLinesFromScene');
+			gui.add(this, 'removeMeshesFromScene').name('removeMeshesFromScene');
 		    // change initial color to HEX in order to work if value other than color is changed
 		    drawProperties.linecolor = initialColor.replace( '#','0x' );
 			}
