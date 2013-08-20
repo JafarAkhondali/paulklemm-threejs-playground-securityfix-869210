@@ -131,7 +131,7 @@
             function addConvexGeometry() {
                 var geometry = new THREE.myConvexGeometry(spineArray);
                 console.log("nach geometry");
-                var material = new THREE.MeshBasicMaterial();
+                var material = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
                 var mesh = new THREE.Mesh(geometry, material);
                 scene.add(mesh);
             }
