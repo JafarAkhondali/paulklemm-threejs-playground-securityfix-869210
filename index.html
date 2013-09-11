@@ -137,8 +137,8 @@
             }
 			
 			function addConvexGeometry2() {
-				var numSpines = spines.length;
-    			var numVerticesPerSpine = spines[0].length;
+				var numSpines = spineArray.length;
+    			var numVerticesPerSpine = spineArray[0].length;
     			// initialize levels as 2dim array
     			var levels = new Array(numVerticesPerSpine);
 				for(var i=0; i<numVerticesPerSpine;i++){
@@ -151,10 +151,11 @@
 				// split spines horizontally into levels
 				for ( var i = 0; i < numSpines; i++ ) {
 					for ( var j = 0; j < numVerticesPerSpine; j++) {
-						levels[j][i] = spines[i][j];
+						levels[j][i] = spineArray[i][j];
 					}
 				}
-				for (var i = numVerticesPerSpine; i > 1; i--) {
+				
+				for (var i = numVerticesPerSpine-1; i > 1; i--) {
 					var verts = levels[i].concat(levels[i-1]);
 					var geom = new THREE.ConvexGeometry(verts);
 					var mat = new THREE.MeshLambertMaterial({color: 'blue'});
@@ -201,6 +202,7 @@
 		    });
 
 			gui.add(this, 'addConvexGeometry').name('addConvexGeometry');
+			gui.add(this, 'addConvexGeometry2').name('convex2');
 			gui.add(this, 'removeLinesFromScene').name('removeLinesFromScene');
 			gui.add(this, 'removeMeshesFromScene').name('removeMeshesFromScene');
 		    // change initial color to HEX in order to work if value other than color is changed
