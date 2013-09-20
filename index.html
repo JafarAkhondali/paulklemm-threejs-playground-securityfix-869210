@@ -151,7 +151,7 @@
 				for (var i = 0; i < numVerticesPerSpine-2; i++) {
 					var verts = levels[i].concat(levels[i+1]);
 					var geom = new THREE.ConvexGeometry(verts);
-					var mat = new THREE.MeshBasicMaterial( { color: 0xff00ff, wireframe: true, transparent: false, opacity: 0.8 });
+					var mat = new THREE.MeshBasicMaterial( { color: 0xff00ff, transparent: false, opacity: 0.8 });
 					var obj = new THREE.Mesh(geom, mat);
 					scene.add(obj);
 				}
@@ -160,7 +160,25 @@
 			function addAllLines() {
 				d3.select("ul#fileList").selectAll("li").each(function(d) {click(d);});
 			}
+			
+			function resetCamera() {
+				// TODO: find cam index
+				//var cam = scene.children[0];
+				scene.children[0].position.set(0,150,10);
+				scene.children[0].up.set(0,0,1);
+			}
 
+			function spreadLinesEvenly() {
+				var lArray = scene.children.filter(function(e){return e instanceof THREE.Line});
+				removeLinesFromScene();
+				for (var i = 0; i < lArray.length; i++) {
+					lArray[i].position.setX(i*30);
+					lArray[i].material.linewidth=10; // should do nothing on windows machines
+					scene.add(lArray[i]);
+				}
+				
+			}
+		
 			var updateLines = function() {
 
 				cube.material.opacity = drawProperties.cubeOpacity;
@@ -180,29 +198,32 @@
 			function addGUI() {
 				var gui = new dat.GUI();
 
-				gui.add(drawProperties, "linewidth").min(0.5).max(10).step(0.5).onChange(function() {
+				/*gui.add(drawProperties, "linewidth").min(0.5).max(10).step(0.5).onChange(function() {
 					updateLines();
 				});
 				gui.addColor(drawProperties, 'linecolor').onChange(function() {
 		    	drawProperties.linecolor = drawProperties.linecolor.replace( '#','0x' );
 		    	updateLines();
-		    });
-		    gui.add(drawProperties, "opacity").min(0).max(1).step(0.1).onChange(function(){
-		    	updateLines();
-		    });
-		    gui.addColor(drawProperties, 'cubeColor').onChange(function() {
-		    	drawProperties.cubeColor = drawProperties.cubeColor.replace( '#','0x' );
-		    	updateLines();
-		    });
-		    gui.add(drawProperties, "cubeOpacity").min(0).max(1).step(0.1).onChange(function(){
-		    	updateLines();
-		    });
-
-			gui.add(this, 'addConvexGeometry').name('addConvex');
-			gui.add(this, 'removeLinesFromScene').name('removeLines');
-			gui.add(this, 'removeMeshesFromScene').name('removeMeshes');
-		    // change initial color to HEX in order to work if value other than color is changed
-		    drawProperties.linecolor = initialColor.replace( '#','0x' );
+				});
+				gui.add(drawProperties, "opacity").min(0).max(1).step(0.1).onChange(function(){
+					updateLines();
+				});
+				gui.addColor(drawProperties, 'cubeColor').onChange(function() {
+					drawProperties.cubeColor = drawProperties.cubeColor.replace( '#','0x' );
+					updateLines();
+				});
+				gui.add(drawProperties, "cubeOpacity").min(0).max(1).step(0.1).onChange(function(){
+					updateLines();
+				});
+				*/
+				gui.add(this, 'addConvexGeometry').name('add Convex');
+				gui.add(this, 'removeLinesFromScene').name('remove Lines');
+				gui.add(this, 'removeMeshesFromScene').name('remove Meshes');
+				gui.add(this, 'addAllLines').name('add All');
+				gui.add(this, 'resetCamera').name('reset Camera');
+				gui.add(this, 'spreadLinesEvenly').name('spread Lines');
+				// change initial color to HEX in order to work if value other than color is changed
+				drawProperties.linecolor = initialColor.replace( '#','0x' );
 			}
 
 			function init() {
@@ -219,7 +240,7 @@
 				scene.add( camera );
 
 				// light
-				var dirLight = new THREE.DirectionalLight( 0x000000 );
+				var dirLight = new THREE.DirectionalLight( 0xff0000 );
 				dirLight.position.set( 200, 200, 1000 ).normalize();
 
 				camera.add( dirLight );
