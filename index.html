@@ -73,7 +73,7 @@
 
 				socket.on('sendAvailableFiles', function (data) {
 				  d3.select("ul#fileList").selectAll("li")
-			    		.data(data)
+						.data(data)
 			  		.enter().append("li")
 			    		.text(function(d) { return d; })
 			    		.on("click", click);
@@ -97,13 +97,13 @@
 					_geometry = geometry;
 					
 					var material = new THREE.LineBasicMaterial({
-		        color: 0x6699FF, linewidth: 3
-			    });
-	           var line = new THREE.Line(geometry, material);
-	           line.name = filename;
-	           _scene.add(line);
+						color: 0x6699FF, linewidth: 3
+						});
+					var line = new THREE.Line(geometry, material);
+					line.name = filename;
+					_scene.add(line);
                 // prepare vertices for convex hull generation
-                spineArray.push(line.geometry.vertices);
+					spineArray.push(line.geometry.vertices);
 				});
 				//loader.load( "data/IDs_cluster3.vtk" );
 				//loader.load( "data/vtk/2012820000028.vtk" );
@@ -164,7 +164,7 @@
 			function resetCamera() {
 				// TODO: find cam index
 				//var cam = scene.children[0];
-				scene.children[0].position.set(0,150,10);
+				scene.children[0].position.set(0,-150,10);
 				scene.children[0].up.set(0,0,1);
 			}
 
@@ -178,7 +178,49 @@
 				}
 				
 			}
-		
+			function addDummyClusters() {
+				var fileList = d3.select("ul#fileList").selectAll("li")[0].map(function(e) {return e.textContent});
+				var numFiles = fileList.length;
+				for ( var i = 0; i < 5; i++ ) {
+					var fileName = fileList[Math.floor(numFiles*Math.random())];
+					var loader = new THREE.VTKLoader();
+					loader.addEventListener( 'load', function ( event ) {
+						var geometry = event.content;
+						geometry.computeFaceNormals();
+						geometry.computeBoundingSphere();
+						
+						var material = new THREE.LineBasicMaterial({
+							vertexColors: THREE.VertexColors, linewidth: 3*i
+							});
+						var line = new THREE.Line(geometry, material);
+						line.name = fileName+"_dummy";
+						for ( var j = 0; j < line.geometry.vertices.length; j++) {
+							var color = new THREE.Color("rgb(255,0,0)");
+							if (line.geometry.vertices[j].y > 0) {
+								color.setRGB(1,0,0);
+								}
+							else {
+								color.setRGB(0,1,0);
+							}
+							line.geometry.colors.push(color);
+						}
+						line.position.setX(i*30-60);
+						scene.add(line);
+						/*
+						for ( var j = 0; j < line.geometry.vertices.length; j++) {
+							geometry.vertices[j].setZ(0);
+						}
+						material = new THREE.LineBasicMaterial({
+						linewidth: 3
+							});
+						line = new THREE.Line(geometry, material);
+						scene.add(line);
+						*/
+						
+					});
+					loader.load("/data/vtk/"+fileName);	
+				}
+			}
 			var updateLines = function() {
 
 				cube.material.opacity = drawProperties.cubeOpacity;
@@ -194,6 +236,8 @@
 					}
 				}
 			}
+			
+			
 
 			function addGUI() {
 				var gui = new dat.GUI();
@@ -222,6 +266,7 @@
 				gui.add(this, 'addAllLines').name('add All');
 				gui.add(this, 'resetCamera').name('reset Camera');
 				gui.add(this, 'spreadLinesEvenly').name('spread Lines');
+				gui.add(this, 'addDummyClusters').name('addClusters');
 				// change initial color to HEX in order to work if value other than color is changed
 				drawProperties.linecolor = initialColor.replace( '#','0x' );
 			}
